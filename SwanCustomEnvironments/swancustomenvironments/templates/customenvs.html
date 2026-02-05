@@ -1,63 +1,29 @@
-{% extends "page.html" %}
-
-{% block stylesheet %}
-{{super()}}
-<style type="text/css">
-/* disable initial hide */
-div#header, div#site {
-    display: block;
-}
-#output-box {
-    max-width: 90%;
-    height: 300px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    text-align: left;
-    border: 1px solid #ccc;
-    background-color: #f7f7f7;
-    padding: 10px;
-    border-radius: 5px;
-    margin: 20px auto;
-}
-#button-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-#back-button {
-    display: none;
-    background-color: #fc6404;
-    margin-bottom: 20px;
-}
-</style>
-{% endblock %}
+{% extends "swan_page.html" %}
 
 {% block params %}
 {{super()}}
 data-base-url="{{base_url | urlencode}}"
 {% endblock %}
 
-{% block site %}
+{% block main %}
 
-<div class="container">
-    <div class="row">
-        <div class="swan-info">
-            <div id="swan-loader">
-                <div class="loader-circle">
-                    <img src="{{hub_prefix}}static/swan/logos/{{swan_logo_filename}}">
-                </div>
-                <div class="loader-line-mask">
-                    <div class="loader-line"></div>
-                </div>
-                <span class="text">Creating environment...</span>
-            </div>
-        </div>
-        <br><br>
-        <div id="output-box"></div>
-        <div id="button-container">
-            <button class="btn btn-danger btn-lg" id="back-button">Restart session</button>
-        </div>
+<div class="container d-flex flex-column justify-content-center" style="min-height: 60vh;">
+  <div class="row">
+    <div id="swan-loader" class="d-flex flex-column align-items-center justify-content-center gap-3 py-5 animate">
+      <div class="loader-ring">
+        <img src="{{ hub_prefix }}static/swan/logos/logo_swan_letters.png" alt="SWAN logo">
+      </div>
+      <h4 class="text-body-secondary">Creating environment...</h4>
     </div>
+  </div>
+  <div class="row">
+    <div class="card">
+      <div id="output-box" class="card-body"></div>
+    </div>
+  </div>
+    <div class="row">
+      <button class="btn btn-danger btn-lg" id="back-button">Restart session</button>
+  </div>
 </div>
 
 {% endblock %}
@@ -121,6 +87,7 @@ data-base-url="{{base_url | urlencode}}"
                 // Remove the last element (empty string) for avoiding an extra line break
                 const chunked_lines = decoder.decode(value, { stream: true }).split('\n').slice(0, -1);
                 chunked_lines.forEach(message_line => {
+                    console.log("Received line:", message_line); // Debug log for received lines
                     if (message_line.startsWith('REPO_PATH')) {
                         const repo_path = message_line.split(':')[1];
                         if (repo_path && repo_path !== '/') {
@@ -141,6 +108,7 @@ data-base-url="{{base_url | urlencode}}"
         }
     }
 
+    console.log("base_url:", base_url);
     const params = ['repository', 'builder', 'builder_version', 'nxcals'].reduce((acc, key) => ({ ...acc, [key]: urlParams.get(key) || "" }), {});
     fetch(base_url + "api/customenvs?" + new URLSearchParams(params).toString(), {
         method: 'GET',

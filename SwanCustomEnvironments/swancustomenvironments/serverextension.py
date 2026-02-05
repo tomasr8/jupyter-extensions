@@ -1,5 +1,8 @@
+import os
+
 from tornado import web
 from asyncio import sleep
+from jinja2 import ChoiceLoader, FileSystemLoader
 
 from jupyter_server.base.handlers import JupyterHandler, APIHandler
 from jupyter_server.utils import url_path_join
@@ -29,13 +32,13 @@ class SwanCustomEnvironmentsApiHandler(APIHandler):
         nxcals (bool): Whether to include NXCALS and Spark extensions in the environment.
         """
         self.set_header("Content-Type", "text/event-stream")
-        makenv_process = SwanCustomEnvironmentsApiHandler.makenv_process
+        # makenv_process = SwanCustomEnvironmentsApiHandler.makenv_process
         
-        if makenv_process is None:
-            makenv_process = self._launch_makenv()
-            SwanCustomEnvironmentsApiHandler.makenv_process = makenv_process
-
-        await self._process_log_stream(makenv_process)
+        # if makenv_process is None:
+        #     makenv_process = self._launch_makenv()
+        #     SwanCustomEnvironmentsApiHandler.makenv_process = makenv_process
+        self.log.info("Launched makenv.sh script")
+        await self._process_log_stream()
         self.finish()
 
     def _launch_makenv(self) -> Popen:
@@ -54,14 +57,18 @@ class SwanCustomEnvironmentsApiHandler(APIHandler):
         with open(self.LOG_FILE, "w") as log_file:
             return Popen([self.makenv_path, *arguments], stdout=log_file, stderr=log_file)
 
-    async def _process_log_stream(self, makenv_process: Popen) -> None:
+    async def _process_log_stream(self) -> None:
         """Reads from the log file and streams output to the client."""
-        with open(self.LOG_FILE, "r") as log_file:
-            while True:
-                line = log_file.readline()
-                if not line and makenv_process.poll() is not None:
-                    break  # Process finished, no more logs to read
-                await self._send_line(line)
+        for _ in range(30):  # Wait for the log file to be created, with a timeout of 30 seconds
+            self.log.info("Send line to client")
+            await self._send_line("foo bar")
+            await sleep(1)
+        # with open(self.LOG_FILE, "r") as log_file:
+        #     while True:
+        #         line = log_file.readline()
+        #         if not line and makenv_process.poll() is not None:
+        #             break  # Process finished, no more logs to read
+        #         await self._send_line(line)
 
     async def _send_line(self, line: str) -> None:
         """Sends a line to the client"""
@@ -82,6 +89,7 @@ class SwanCustomEnvironmentsHandler(JupyterHandler):
             self.render_template(
                 "customenvs.html",
                 page_title="Creating custom environment",
+                hub_prefix="http://localhost:8000/"
             )
         )
 
@@ -91,6 +99,13 @@ def _load_jupyter_server_extension(serverapp):
     """
 
     web_app = serverapp.web_app
+
+    templates_dir = os.path.join(os.path.dirname(__file__), "templates")
+    jinja_env = web_app.settings["jinja2_env"]
+    jinja_env.loader = ChoiceLoader([
+        FileSystemLoader(templates_dir),
+        jinja_env.loader,
+    ])
 
     new_handlers = [
         (r"/api/customenvs", SwanCustomEnvironmentsApiHandler),
