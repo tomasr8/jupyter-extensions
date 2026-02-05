@@ -1,28 +1,21 @@
 {% extends "swan_page.html" %}
 
-{% block params %}
-{{super()}}
-data-base-url="{{base_url | urlencode}}"
-{% endblock %}
-
 {% block main %}
 
 <div class="container d-flex flex-column justify-content-center" style="min-height: 60vh;">
   <div class="row">
     <div id="swan-loader" class="d-flex flex-column align-items-center justify-content-center gap-3 py-5 animate">
       <div class="loader-ring">
-        <img src="{{ hub_prefix }}static/swan/logos/logo_swan_letters.png" alt="SWAN logo">
+        <img src="{{ hub_prefix }}/static/swan/logos/logo_swan_letters.png" alt="SWAN logo">
       </div>
-      <h4 class="text-body-secondary">Creating environment...</h4>
+      <h4 id="status-msg" class="text-body-secondary">Creating environment...</h4>
+      <button id="restart-session" class="hidden btn btn-primary btn-lg">Restart session</button>
     </div>
   </div>
-  <div class="row">
+  <div class="row mb-4">
     <div class="card">
-      <div id="output-box" class="card-body"></div>
+      <div id="output-box" class="card-body" style="font-family: monospace; max-height: 50vh; overflow-y: auto; white-space: pre-wrap;"></div>
     </div>
-  </div>
-    <div class="row">
-      <button class="btn btn-danger btn-lg" id="back-button">Restart session</button>
   </div>
 </div>
 
@@ -32,19 +25,17 @@ data-base-url="{{base_url | urlencode}}"
     {{super()}}
 
 <script type = "text/javascript">
-    const base_url = document.body.dataset.baseUrl; // Use dataset for cleaner access
+    const base_url = "{{ base_url }}";
+    const hubPrefix = "{{ hub_prefix }}";
     const outputBox = document.getElementById('output-box');
+    const restartSessionBtn = document.getElementById('restart-session');
     let has_failed = false, project_path = '/';
 
     const urlParams = new URLSearchParams(window.location.search);
     const file = `/${urlParams.get('file') || ""}`.replace(/\.\.\//g, '').replace(/\.\.\\/g, '');
     const user_interface = urlParams.get('user_interface') || 'lab';
 
-    // Scroll to the output-box height
-    outputBox.scrollIntoView({
-        behavior: "smooth",
-        block: "start" // aligns the top of the element with the top of the scroll area
-    });
+    restartSessionBtn.addEventListener('click', () => window.location = `${hubPrefix}/home?changeconfig`);
 
     const get_jh_auth_header = () => {
         const xsrf = document.cookie.match(/\b_xsrf=([^;]*)\b/);
@@ -53,13 +44,14 @@ data-base-url="{{base_url | urlencode}}"
 
     // Function to trigger a visual error in the loader
     const trigger_visual_error = (message) => {
-        const backButton = document.getElementById('back-button');
         const loader = document.getElementById('swan-loader');
+        const statusMsg = document.getElementById('status-msg');
 
-        loader.getElementsByClassName('loader-line-mask')[0].style.display = 'none';
-        loader.getElementsByClassName('text')[0].innerHTML = 'Error creating environment';
-        backButton.onclick = () => window.location = '/hub/home?changeconfig';
-        backButton.style.display = 'block';
+        loader.classList.add('error');
+        statusMsg.textContent = 'Error creating environment';
+        statusMsg.classList.remove('text-body-secondary');
+        statusMsg.classList.add('text-danger');
+        restartSessionBtn.classList.remove('hidden');
         console.error(message);
     };
 
@@ -87,7 +79,6 @@ data-base-url="{{base_url | urlencode}}"
                 // Remove the last element (empty string) for avoiding an extra line break
                 const chunked_lines = decoder.decode(value, { stream: true }).split('\n').slice(0, -1);
                 chunked_lines.forEach(message_line => {
-                    console.log("Received line:", message_line); // Debug log for received lines
                     if (message_line.startsWith('REPO_PATH')) {
                         const repo_path = message_line.split(':')[1];
                         if (repo_path && repo_path !== '/') {
@@ -96,11 +87,11 @@ data-base-url="{{base_url | urlencode}}"
                     } 
                     // Usual case -> update output box with the message received
                     else {
-                        outputBox.innerHTML += message_line;
-                        outputBox.scrollTop = outputBox.scrollHeight;
+                        outputBox.textContent += message_line;
+                        outputBox.textContent += '\n';
+                        outputBox.scrollTop = outputBox.scrollHeight; // Auto-scroll to the bottom
                         if (message_line.includes('ERROR')) has_failed = true;
                     }
-                    outputBox.innerHTML += '<br>';
                 });
             }
         } catch (error) {
@@ -108,7 +99,6 @@ data-base-url="{{base_url | urlencode}}"
         }
     }
 
-    console.log("base_url:", base_url);
     const params = ['repository', 'builder', 'builder_version', 'nxcals'].reduce((acc, key) => ({ ...acc, [key]: urlParams.get(key) || "" }), {});
     fetch(base_url + "api/customenvs?" + new URLSearchParams(params).toString(), {
         method: 'GET',

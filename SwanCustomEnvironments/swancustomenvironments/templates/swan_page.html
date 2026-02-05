@@ -16,7 +16,7 @@
 {% block logo %}
   <span id="jupyterhub-logo" class="navbar-brand">
     <a href="{{ logo_url or base_url }}">
-      <img src="{{ hub_prefix }}logo" alt="SWAN logo" class="jpy-logo" title="Home" />
+      <img src="{{ hub_prefix }}/logo" alt="SWAN logo" class="jpy-logo" title="Home" />
     </a>
   </span>
 {% endblock logo %}
@@ -44,7 +44,7 @@
 {% endmacro %}
 
 {% macro render_logo() %}
-  <img src="{{ hub_prefix }}static/swan/logos/logo_cern.svg" alt="CERN logo">
+  <img src="{{ hub_prefix }}/static/swan/logos/logo_cern.svg" alt="CERN logo">
 {% endmacro %}
 
 {% macro render_help_links() %}
