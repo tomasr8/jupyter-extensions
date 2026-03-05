@@ -190,7 +190,8 @@ class SparkK8sConfiguration(SparkConfiguration):
         """ Dependencies which are in EOS HOME will be formatted to root:// """
 
         spark_work_dir = None
-        for dh in self.connector.ipython.user_ns.get('_dh'):
+        for dh in self.connector.ipython.user_ns.get('_dh', []):
+            dh = str(dh)  # dh is a PosixPath, convert to string
             if dh.startswith('/eos/home') and 'SWAN_projects' in dh:
                 # Adjust /eos/home path to /eos/user xrootd access
                 spark_work_dir = dh.replace('/eos/home', 'root://eoshome.cern.ch//eos/user', 1).replace('-', '/', 1)
