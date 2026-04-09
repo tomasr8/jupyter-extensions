@@ -108,3 +108,5 @@ folder is located. Then you can remove the symlink named `@swan-cern/hdfsbrowser
 ### Packaging the extension
 
 See [RELEASE](RELEASE.md)
+
+test

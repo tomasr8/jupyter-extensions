@@ -28,6 +28,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
 export default plugin;
 
+console.log('test')
+
 /**
  * Activate the running plugin.
  */
